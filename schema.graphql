@@ -1,0 +1,23 @@
+#_____DATATYPES_____
+type Entry {
+  id: Int!
+  title: String
+  content: String
+}
+
+type ResponseEntry {
+  data: Entry!
+}
+
+type ResponseEntries {
+  data: [Entry!]
+}
+
+schema {
+  query: Query
+}
+
+type Query {
+  getEntries: ResponseEntries!
+  getEntryById(id: Int!): ResponseEntry!
+}

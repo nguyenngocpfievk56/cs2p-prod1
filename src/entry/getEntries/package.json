@@ -1,0 +1,7 @@
+{
+  "name": "get_entries",
+  "version": "1.0.0",
+  "main": "app.mjs",
+  "author": "NgocNh",
+  "license": "MIT"
+}

@@ -1,101 +1,117 @@
-AWSTemplateFormatVersion: '2010-09-09'
+AWSTemplateFormatVersion: "2010-09-09"
 Transform: AWS::Serverless-2016-10-31
-Description: >
-  sam-app
-  
-  Sample SAM Template for sam-app
 
+Parameters:
+    PrefixLetters:
+        Type: String
+        Default: prod
+    ProjectCode:
+        Type: String
+        Default: CS2P_PROD1
+
+Globals:
+    Function:
+        Runtime: nodejs18.x
+        Timeout: 10
+        Handler: app.lambdaHandler
 
 Resources:
-  PostsTable:
-    Type: AWS::Serverless::SimpleTable
+    #_____FUNCTIONS_____
+    #Entry
+    # GetEntriesFunction:
+    #     Type: AWS::Serverless::Function
+    #     Properties:
+    #         FunctionName: !Sub "${PrefixLetters}_${ProjectCode}_GetEntries"
+    #         CodeUri: src/entry/getEntries
+            # Layers:
+            #     - !Ref AppCommons
+    GetEntryByIdFunction:
+        Type: AWS::Serverless::Function
+        Properties:
+            FunctionName: !Sub "${PrefixLetters}_${ProjectCode}_GetEntryById"
+            CodeUri: src/entry/getEntryById
+            Layers:
+                - !Ref AppCommons
 
-  Greeter:
-    Type: AWS::Serverless::Function # More info about Function Resource: https://github.com/awslabs/serverless-application-model/blob/master/versions/2016-10-31.md#awsserverlessfunction
-    Properties:
-      CodeUri: greeter/
-      Handler: app.lambdaHandler
-      Runtime: nodejs18.x
-      Architectures:
-        - x86_64
+    #_____DATA SOURCES_____
+    #Entry
+    GetEntriesDataSource:
+        Type: AWS::AppSync::DataSource
+        Properties:
+            ApiId: !GetAtt GraphQLApi.ApiId
+            Name: GetEntriesDataSource
+            Type: AWS_LAMBDA
+            ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+            LambdaConfig:
+                LambdaFunctionArn: arn:aws:lambda:ap-southeast-1:481757869368:function:main_CS2P_BASE_GetEntries
+    GetEntryByIdDataSource:
+        Type: AWS::AppSync::DataSource
+        Properties:
+            ApiId: !GetAtt GraphQLApi.ApiId
+            Name: GetEntryByIdDataSource
+            Type: AWS_LAMBDA
+            ServiceRoleArn: !GetAtt AppSyncServiceRole.Arn
+            LambdaConfig:
+                LambdaFunctionArn: !GetAtt GetEntryByIdFunction.Arn
+    
+    #_____RESOLVERS_____
+    #Entry
+    GetEntriesResolver:
+        Type: AWS::AppSync::Resolver
+        Properties:
+            ApiId: !GetAtt GraphQLApi.ApiId
+            FieldName: getEntries
+            TypeName: Query
+            DataSourceName: !GetAtt GetEntriesDataSource.Name
+    GetEntryByIdResolver:
+        Type: AWS::AppSync::Resolver
+        Properties:
+            ApiId: !GetAtt GraphQLApi.ApiId
+            FieldName: getEntryById
+            TypeName: Query
+            DataSourceName: !GetAtt GetEntryByIdDataSource.Name
 
-  HelloWorldGraphQLApi:
-    Type: AWS::Serverless::GraphQLApi
-    Properties:
-      SchemaUri: ./gql/schema.graphql
-      Auth:
-        Type: API_KEY
-      ApiKeys:
-        MyApiKey:
-          Description: my api key
-      DataSources:
-        DynamoDb:
-          Posts:
-            TableName: !Ref PostsTable
-            TableArn: !GetAtt PostsTable.Arn
-        Lambda:
-          Greeter:
-            FunctionArn: !GetAtt Greeter.Arn
-      Functions:
-        preprocessPostItem:
-          Runtime:
-            Name: APPSYNC_JS
-            Version: 1.0.0
-          DataSource: NONE
-          CodeUri: ./gql/preprocessPostItem.js
-        createPostItem:
-          Runtime:
-            Name: APPSYNC_JS
-            Version: "1.0.0"
-          DataSource: Posts
-          CodeUri: ./gql/createPostItem.js
-        getPostFromTable:
-          Runtime:
-            Name: APPSYNC_JS
-            Version: "1.0.0"
-          DataSource: Posts
-          CodeUri: ./gql/getPostFromTable.js
-        greet:
-          Runtime:
-            Name: APPSYNC_JS
-            Version: "1.0.0"
-          DataSource: Greeter
-          CodeUri: ./gql/greet.js
-      Resolvers:
-        Mutation:
-          addPost:
-            Runtime:
-              Name: APPSYNC_JS
-              Version: "1.0.0"
-            Pipeline:
-            - preprocessPostItem
-            - createPostItem
-        Query:
-          getPost:
-            Runtime:
-              Name: APPSYNC_JS
-              Version: "1.0.0"
-            Pipeline:
-            - getPostFromTable
-          sayHello:
-            Runtime:
-              Name: APPSYNC_JS
-              Version: "1.0.0"
-            Pipeline:
-            - greet
-          sayGoodbye:
-            Runtime:
-              Name: APPSYNC_JS
-              Version: "1.0.0"
-            Pipeline:
-            - greet
+    #_____INIT GRAPHQL_____
+    GraphQLApi:
+        Type: AWS::AppSync::GraphQLApi
+        Properties:
+            Name: !Sub "${PrefixLetters}_${ProjectCode}_GraphQL"
+            AuthenticationType: OPENID_CONNECT
+            OpenIDConnectConfig:
+                ClientId: "AkNRE1qjj3nSef4AjwItuL4NrtMKx6Tn"
+                Issuer: "https://dev-6m9zf0-9.us.auth0.com"
+    GraphQLSchema:
+        Type: AWS::AppSync::GraphQLSchema
+        Properties:
+            ApiId: !GetAtt GraphQLApi.ApiId
+            DefinitionS3Location: "./schema.graphql"
 
+    #_____LAYERS_____
+    # AppCommons:
+    #     Type: AWS::Serverless::LayerVersion
+    #     Properties:
+    #         ContentUri: libs
+    #         CompatibleRuntimes:
+    #             - python3.9
 
-Outputs:
-  HelloWorldGraphQLApi:
-    Description: HelloWorldGraphQLApi endpoint URL for Prod environment
-    Value: !GetAtt HelloWorldGraphQLApi.GraphQLUrl
-  HelloWorldGraphQLApiMyApiKey:
-    Description: API Key for HelloWorldGraphQLApi
-    Value: !GetAtt HelloWorldGraphQLApiMyApiKey.ApiKey
-
+    #_____ROLES_____
+    AppSyncServiceRole:
+        Type: AWS::IAM::Role
+        Properties:
+            AssumeRolePolicyDocument:
+                Version: 2012-10-17
+                Statement:
+                    - Effect: Allow
+                      Principal:
+                          Service: appsync.amazonaws.com
+                      Action:
+                          - sts:AssumeRole
+            Policies:
+                - PolicyName: AppSyncServiceRole
+                  PolicyDocument:
+                      Version: 2012-10-17
+                      Statement:
+                          - Effect: Allow
+                            Action: lambda:invokeFunction
+                            Resource:
+                                - !Sub "arn:aws:lambda:${AWS::Region}:*:*"

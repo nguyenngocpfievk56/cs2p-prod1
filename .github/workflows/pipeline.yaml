@@ -1,27 +1,24 @@
 name: Pipeline
-
-on:
+'on':
   push:
     branches:
-      - 'main'
-      - 'develop'
-      - 'cs2p_**'
+      - main
+      - develop
+      - cs2p_**
   delete:
     branches:
-      - 'cs2p_**'
-
+      - cs2p_**
 env:
   PIPELINE_USER_ACCESS_KEY_ID: ${{ secrets.AWS_ACCESS_KEY_ID }}
   PIPELINE_USER_SECRET_ACCESS_KEY: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
   SAM_TEMPLATE: template.yaml
-  TESTING_STACK_NAME: dev-new-cs2p-sam-app
-  TESTING_ARTIFACTS_BUCKET: new-cs2p-deploy
+  TESTING_STACK_NAME: dev-new-cs2p-sam-prod1
+  TESTING_ARTIFACTS_BUCKET: new-cs2p-prod1-deploy
   TESTING_REGION: ap-southeast-1
-
-  PROD_STACK_NAME: prod-new-cs2p-sam-app
-  PROD_ARTIFACTS_BUCKET: new-cs2p-deploy
+  
+  PROD_STACK_NAME: prod-new-cs2p-sam-prod1
+  PROD_ARTIFACTS_BUCKET: new-cs2p-prod1-deploy
   PROD_REGION: ap-southeast-1
-
 jobs:
   start:
     if: github.event_name == 'push'
@@ -30,7 +27,6 @@ jobs:
       - uses: actions/checkout@v4
       - run: |
           # trigger the tests here
-
   delete-feature:
     if: startsWith(github.event.ref, 'csx_') && github.event_name == 'delete'
     runs-on: ubuntu-latest
@@ -38,7 +34,6 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
       - uses: aws-actions/setup-sam@v2
-
       - name: Assume the testing pipeline user role
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -48,7 +43,6 @@ jobs:
           role-session-name: testing-packaging
           role-duration-seconds: 3600
           role-skip-session-tagging: true
-
       - name: Delete feature branch stack
         env:
           FEATURE_BRANCH_NAME: ${{ github.event.ref }}
@@ -57,10 +51,10 @@ jobs:
             --stack-name $(echo ${FEATURE_BRANCH_NAME##*/} | tr -cd '[a-zA-Z0-9-]') \
             --region ${TESTING_REGION} \
             --no-prompts
-
   build-and-deploy-feature:
     if: startsWith(github.ref, 'refs/heads/csx_')
-    needs: [start]
+    needs:
+      - start
     runs-on: ubuntu-latest
     env:
       b_name: ${{ github.ref_name }}
@@ -69,7 +63,6 @@ jobs:
       - uses: actions/setup-node@v4
       - uses: aws-actions/setup-sam@v2
       - run: sam build --template ${SAM_TEMPLATE} --use-container
-
       - name: Assume the testing pipeline user role
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -79,7 +72,6 @@ jobs:
           role-session-name: feature-deployment
           role-duration-seconds: 3600
           role-skip-session-tagging: true
-
       - name: Deploy to feature stack in the testing account
         shell: bash
         run: |
@@ -89,19 +81,17 @@ jobs:
             --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
             --no-fail-on-empty-changeset \
             --parameter-overrides PrefixLetters=${b_name}
-
   build-and-package-dev:
     if: github.ref == 'refs/heads/develop'
-    needs: [start]
+    needs:
+      - start
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
       - uses: aws-actions/setup-sam@v2
-
       - name: Build resources
         run: sam build --template ${SAM_TEMPLATE} --use-container
-
       - name: Assume the testing pipeline user role
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -111,31 +101,27 @@ jobs:
           role-session-name: testing-packaging
           role-duration-seconds: 3600
           role-skip-session-tagging: true
-
       - name: Upload artifacts to testing artifact buckets
         run: |
           sam package \
             --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
             --region ${TESTING_REGION} \
             --output-template-file packaged-testing.yaml
-
       - uses: actions/upload-artifact@v4
         with:
           name: packaged-testing.yaml
           path: packaged-testing.yaml
-
   build-and-package-prod:
     if: github.ref == 'refs/heads/main'
-    needs: [start]
+    needs:
+      - start
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
       - uses: aws-actions/setup-sam@v2
-
       - name: Build resources
         run: sam build --template ${SAM_TEMPLATE} --use-container
-
       - name: Assume the prod pipeline user role
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -145,22 +131,20 @@ jobs:
           role-session-name: prod-packaging
           role-duration-seconds: 3600
           role-skip-session-tagging: true
-
       - name: Upload artifacts to production artifact buckets
         run: |
           sam package \
             --s3-bucket ${PROD_ARTIFACTS_BUCKET} \
             --region ${PROD_REGION} \
             --output-template-file packaged-prod.yaml
-
       - uses: actions/upload-artifact@v4
         with:
           name: packaged-prod.yaml
           path: packaged-prod.yaml
-
   deploy-dev:
     if: github.ref == 'refs/heads/develop'
-    needs: [build-and-package-dev]
+    needs:
+      - build-and-package-dev
     runs-on: ubuntu-latest
     env:
       b_name: ${{ github.ref_name }}
@@ -171,7 +155,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: packaged-testing.yaml
-
       - name: Assume the testing pipeline user role
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -181,7 +164,6 @@ jobs:
           role-session-name: testing-deployment
           role-duration-seconds: 3600
           role-skip-session-tagging: true
-
       - name: Deploy to testing account
         run: |
           sam deploy --stack-name ${TESTING_STACK_NAME} \
@@ -191,10 +173,10 @@ jobs:
             --s3-bucket ${TESTING_ARTIFACTS_BUCKET} \
             --no-fail-on-empty-changeset \
             --parameter-overrides PrefixLetters=${b_name}
-
   deploy-prod:
     if: github.ref == 'refs/heads/main'
-    needs: [build-and-package-prod]
+    needs:
+      - build-and-package-prod
     runs-on: ubuntu-latest
     env:
       b_name: ${{ github.ref_name }}
@@ -205,7 +187,6 @@ jobs:
       - uses: actions/download-artifact@v4
         with:
           name: packaged-prod.yaml
-
       - name: Assume the prod pipeline user role
         uses: aws-actions/configure-aws-credentials@v4
         with:
@@ -215,7 +196,6 @@ jobs:
           role-session-name: prod-deployment
           role-duration-seconds: 3600
           role-skip-session-tagging: true
-
       - name: Deploy to production account
         run: |
           sam deploy --stack-name ${PROD_STACK_NAME} \
