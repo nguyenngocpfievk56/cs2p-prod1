@@ -5,6 +5,7 @@ version = 0.1
 [default]
 [default.global.parameters]
 stack_name = "sam-app"
+region = "ap-southeast-1"
 
 [default.build.parameters]
 cached = true
