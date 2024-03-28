@@ -6,7 +6,9 @@ version = 0.1
 [default.deploy]
 [default.deploy.parameters]
 
+stack_name = "cs2pprod1"
 s3_bucket = "new-cs2p-prod1-deploy"
+s3_prefix = "cs2pprod1"
 region = "ap-southeast-1"
 confirm_changeset = false
 capabilities = "CAPABILITY_IAM"
