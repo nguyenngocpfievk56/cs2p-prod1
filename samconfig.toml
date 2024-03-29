@@ -3,13 +3,29 @@
 version = 0.1
 
 [default]
-[default.deploy]
-[default.deploy.parameters]
-
-s3_bucket = "new-cs2p-prod1-deploy"
-s3_prefix = "cs2pprod1"
+[default.global.parameters]
 region = "ap-southeast-1"
-disable_rollback = false
-confirm_changeset = false
+
+[default.build.parameters]
+cached = true
+parallel = true
+
+[default.validate.parameters]
+lint = true
+
+[default.deploy.parameters]
 capabilities = "CAPABILITY_IAM"
-image_repositories = []
+confirm_changeset = false
+s3_bucket = "new-cs2p-prod1-deploy"
+
+[default.package.parameters]
+s3_bucket = "new-cs2p-prod1-deploy"
+
+[default.sync.parameters]
+watch = true
+
+[default.local_start_api.parameters]
+warm_containers = "EAGER"
+
+[default.local_start_lambda.parameters]
+warm_containers = "EAGER"
