@@ -30,8 +30,8 @@ Resources:
         Properties:
             FunctionName: !Sub "${PrefixLetters}_${ProjectCode}_GetEntryById"
             CodeUri: src/entry/getEntryById
-            Layers:
-                - !Ref AppCommons
+            # Layers:
+            #     - !Ref AppCommons
 
     #_____DATA SOURCES_____
     #Entry
