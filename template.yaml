@@ -53,13 +53,13 @@ Resources:
                         Name: APPSYNC_JS
                         Version: "1.0.0"
                     DataSource: GetEntriesDataSource
-                    CodeUri: ./gql/getEntries.js
+                    CodeUri: ./gql/entry/getEntries.js
                 getEntryById:
                     Runtime:
                         Name: APPSYNC_JS
                         Version: "1.0.0"
                     DataSource: GetEntryByIdDataSource
-                    CodeUri: ./gql/getEntryById.js
+                    CodeUri: ./gql/entry/getEntryById.js
             Resolvers:
                 Query:
                     getEntries:
