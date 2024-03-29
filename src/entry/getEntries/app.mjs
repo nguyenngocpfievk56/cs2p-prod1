@@ -2,7 +2,7 @@ export const lambdaHandler = async (event, _) => {
     const data = [
         {
             id: 1,
-            title: 'Base 1',
+            title: 'Base 1 for new development',
             content: 'This is the first Base entry',
         },
         {

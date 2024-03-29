@@ -52,7 +52,7 @@ jobs:
             --region ${TESTING_REGION} \
             --no-prompts
   build-and-deploy-feature:
-    if: startsWith(github.ref, 'refs/heads/csx_')
+    if: startsWith(github.ref, 'refs/heads/cs2p_')
     needs:
       - start
     runs-on: ubuntu-latest
